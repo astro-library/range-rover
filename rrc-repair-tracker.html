@@ -307,12 +307,31 @@ const DATA = [
     id: "abs",
     title: "2. ABS system",
     tasks: [
-      { t: "Pull ABS fault codes (self-diagnostic blink codes — no OBD-II on a '91)", m: 30 },
-      { t: "Inspect wiring/connectors at all 4 wheel speed sensors", m: 45 },
-      { t: "Check ABS modulator/pump unit for fluid weeping or corrosion", m: 30 },
-      { t: "Clean or replace faulty wheel speed sensor(s)", m: 45 },
-      { t: "Repair any damaged wiring/connectors found", m: 45 },
-      { t: "Clear codes, road test, confirm ABS light stays off", m: 20 }
+      { t: "Find the diagnostic connector — blue plug tucked under the front of the driver's seat", m: 10 },
+      { t: "Remove the ABS warning light relay, switch ignition on, confirm the light comes on", m: 10 },
+      { t: "Build a jumper wire (~1in of 12ga wire) and bridge the black and black/pink pins on the connector, then turn ignition to position 2", m: 15,
+        note: "5 seconds after connecting, the ABS light goes out — that's the start of the blink cycle. Long pause (2.5s) → long flash (2.5s) → long pause (2.5s) → short flash (0.5s) marks the start phase. After that, count short flashes for the first code digit, a 2.5s pause, then short flashes for the second digit. It repeats until you disconnect the jumper. A 7.5s pause after the start phase with no flashes means no stored faults." },
+      { t: "Read and log every code before disconnecting", m: 20,
+        note: "Disconnecting the jumper clears whatever code is currently displaying from memory, so don't pull it until you've written the code down. To get the next stored code, reconnect and repeat." },
+      { t: "Look up each code against the reference table below and identify the likely cause", m: 15 },
+      { t: "Inspect wiring/connectors at the wheel speed sensor(s) implicated by the codes", m: 45 },
+      { t: "Bench test flagged sensor(s) — resistance should read 700–2000 ohms, output ≥0.93 VAC RMS at 1 rev/sec", m: 30 },
+      { t: "Check sensor air gap, exciter ring runout, and bearing play; adjust or replace as needed", m: 30 },
+      { t: "Repair or replace faulty sensor(s)/wiring, reconnect ABS relay", m: 45 },
+      { t: "Re-run blink code check to confirm clear, then road test", m: 20 }
+    ],
+    reference: [
+      ["2-6", "Faulty stoplight switch or wiring; check fuse A5"],
+      ["2-7", "Continuous power to ECU with ignition off — bad valve relay or wiring"],
+      ["2-8", "No voltage reaching the ABS solenoid valves — bad valve relay or wiring"],
+      ["2-12 / 2-13 / 2-14 / 2-15", "Sensor air gap too large or sensor pushed out by exciter ring — FR / RL / FL / RR"],
+      ["3-0 to 3-9", "Open circuit between ECU and a booster solenoid valve"],
+      ["4-0 to 4-9", "Short to earth between ECU and a booster solenoid valve"],
+      ["4-12 / 4-13 / 4-14 / 4-15", "Sensor wiring broken or resistance too high — FR / RL / FL / RR"],
+      ["5-0 to 5-9", "Short to 12V between ECU and a booster solenoid valve — check for an earth fault"],
+      ["5-12 / 5-13 / 5-14 / 5-15", "Intermittent sensor or wiring fault — FR / RL / FL / RR"],
+      ["6-0 to 6-9", "Short circuit between two ECU-to-solenoid connections"],
+      ["6-12 / 6-13 / 6-14 / 6-15", "No sensor output, likely excessive air gap — FR / RL / FL / RR"]
     ]
   },
   {
@@ -379,7 +398,10 @@ function render(){
       row.className = "task" + (checked ? " done" : "");
       row.innerHTML = `
         <input type="checkbox" ${checked ? "checked" : ""} />
-        <div class="task-text">${task.t}</div>
+        <div style="flex:1">
+          <div class="task-text">${task.t}</div>
+          ${task.note ? `<div class="task-note">${task.note}</div>` : ""}
+        </div>
         <div class="task-time">~${task.m} min</div>
       `;
       row.querySelector("input").addEventListener("change", (e) => {
@@ -389,6 +411,33 @@ function render(){
       });
       body.appendChild(row);
     });
+
+    if (project.reference) {
+      const refWrap = document.createElement("div");
+      refWrap.style.marginTop = "12px";
+      refWrap.style.paddingTop = "10px";
+      refWrap.style.borderTop = "1px solid var(--rule)";
+      const refLabel = document.createElement("div");
+      refLabel.style.fontFamily = "'Oswald',sans-serif";
+      refLabel.style.fontSize = "11px";
+      refLabel.style.letterSpacing = ".06em";
+      refLabel.style.textTransform = "uppercase";
+      refLabel.style.color = "var(--ink-soft)";
+      refLabel.style.marginBottom = "8px";
+      refLabel.textContent = "Fault code reference";
+      refWrap.appendChild(refLabel);
+      project.reference.forEach(([code, desc]) => {
+        const line = document.createElement("div");
+        line.style.display = "flex";
+        line.style.gap = "10px";
+        line.style.fontSize = "12.5px";
+        line.style.padding = "3px 0";
+        line.style.borderBottom = "1px solid var(--rule)";
+        line.innerHTML = `<span style="font-family:'JetBrains Mono',monospace;color:var(--orange-deep);flex-shrink:0;min-width:110px;">${code}</span><span style="color:var(--ink-soft)">${desc}</span>`;
+        refWrap.appendChild(line);
+      });
+      body.appendChild(refWrap);
+    }
 
     div.appendChild(head);
     div.appendChild(body);
